@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>chat demo</title>
+</head>
+<body>
+    <form action="/new-msg/" method="post">
+        <textarea id="text"></textarea>
+        <input type="submit"/>
+    </form>
+    <div id="msg"></div>
+    <script src="{{ static_url('jquery-1.6.4.js') }}"></script>
+    <script src="{{ static_url('chat.js') }}"></script>
+</body>
+</html>
