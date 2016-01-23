@@ -9,6 +9,10 @@ import itertools
 
 __author__ = 'yonka'
 
+requirements_start = "requirements_start"
+requirements_end = "requirements_end"
+# requirement_dir_name_temp = "_%s_requirements"
+
 
 class Requirement(object):
 
@@ -65,7 +69,6 @@ class GitRequirement(Requirement):
         if temp_dir is None:
             temp_dir = tempfile.mkdtemp()
 
-
         repo_path = os.path.join(temp_dir, self.name)
         if os.path.exists(repo_path):
             cmd = "rm -rf %s" % repo_path
@@ -113,6 +116,13 @@ class GitRequirement(Requirement):
             cmd = "cp -r %s %s" % (
                 os.path.join(repo_path, self.path),
                 dst_path)
+        if os.path.exists(dst_path):
+            cmd = "rm -rf %s" % dst_path
+            print "exec cmd:", cmd
+            ret = subprocess.call([cmd], shell=True)
+            if ret != 0:
+                sys.stderr.write("met error when remove old exp dir for %s" % self)
+                return
         print "exec cmd:", cmd
         ret = subprocess.call([cmd], shell=True)
         if ret != 0:
@@ -134,13 +144,13 @@ def parse_requirement_from_module_doc(mod_doc):
     res = []
     doc_lines = mod_doc.split("\n")
     for i, l in enumerate(doc_lines):
-        if l.strip() == "requirements_start":
+        if l.strip() == requirements_start:
             break
     else:
         return res
     for l in doc_lines[1+1:]:
         l = l.strip()
-        if l == "requirements_end":
+        if l == requirements_end:
             break
         lis = l.split(None, 1)
         if len(lis) != 2:
@@ -170,7 +180,7 @@ def main():
     exp_dir = e
     if not exp_dir:
         exp_dir = "./"
-    exp_dir = os.path.abspath(os.path.join(exp_dir, "_%s_requirements" % m))
+    exp_dir = os.path.abspath(exp_dir)
     if not os.path.exists(exp_dir):
         print "export dir %s not exist, try to create it" % exp_dir
         os.makedirs(exp_dir)
