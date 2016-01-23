@@ -6,6 +6,7 @@ import tempfile
 import subprocess
 import sys
 import itertools
+import re
 
 __author__ = 'yonka'
 
@@ -168,6 +169,20 @@ def parse_requirement_from_module_doc(mod_doc):
     return res
 
 
+def get_cur_dir_module_doc(mod):
+    try:
+        mod = importlib.import_module(m)
+        return mod.__doc__
+    except ImportError:
+        pass
+
+    with open("%s.py" % mod) as f:
+        s = f.read()
+        match = re.match('.*?\"\"\"(.*?)\"\"\".*', s, re.MULTILINE | re.DOTALL)
+        if match:
+            return match.group(1)
+
+
 def main():
     global d, m, e
     if not m:
@@ -178,8 +193,7 @@ def main():
     abs_cwd = os.path.abspath("./")
     if abs_cwd not in sys.path:
         sys.path.append(abs_cwd)
-    mod = importlib.import_module(m)
-    mod_doc = mod.__doc__
+    mod_doc = get_cur_dir_module_doc(m)
     mod_requirements = parse_requirement_from_module_doc(mod_doc)
     if not mod_requirements:
         print "module %s has no requirement, module doc is %s, exit!" % (m, mod_doc)
