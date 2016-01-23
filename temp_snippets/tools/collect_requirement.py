@@ -130,6 +130,10 @@ def parse_requirement_from_module_doc(mod_doc):
 
 
 def main():
+    global d, m, e
+    if not m:
+        m = os.path.basename(d)
+        d = os.path.dirname(d)
     if d:
         os.chdir(d)
     mod = importlib.import_module(m)
@@ -188,3 +192,4 @@ if __name__ == "__main__":
     )
     options, args = parser.parse_args()
     d, m, e = options.d, options.m, options.e
+    main()
