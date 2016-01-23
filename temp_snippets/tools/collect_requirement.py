@@ -72,9 +72,9 @@ class GitRequirement(Requirement):
 
         repo_path = os.path.join(temp_dir, self.name)
         if os.path.exists(repo_path):
-            cmd = "rm -rf %s" % repo_path
-            print "exec cmd:", cmd
-            ret = subprocess.call([cmd], shell=True)
+            del_cmd = "rm -rf %s" % repo_path
+            print "exec cmd:", del_cmd
+            ret = subprocess.call([del_cmd], shell=True)
             if ret != 0:
                 sys.stderr.write("met error when remove old dir for %s" % self)
                 return
@@ -110,7 +110,7 @@ class GitRequirement(Requirement):
 
         if self.path is None:
             dst_path = os.path.join(exp_dir, self.dir_name or self.name)
-            cmd = "cd %s && rm -rf .git* && cdgit  .. && cp -r %s %s" % (
+            cmd = "cd %s && rm -rf .git* && cd .. && cp -r %s %s" % (
                 repo_path, repo_path, dst_path)
         else:
             dst_path = os.path.join(exp_dir, self.dir_name or os.path.basename(self.path))
@@ -118,9 +118,9 @@ class GitRequirement(Requirement):
                 os.path.join(repo_path, self.path),
                 dst_path)
         if os.path.exists(dst_path):
-            cmd = "rm -rf %s" % dst_path
-            print "exec cmd:", cmd
-            ret = subprocess.call([cmd], shell=True)
+            del_cmd = "rm -rf %s" % dst_path
+            print "exec cmd:", del_cmd
+            ret = subprocess.call([del_cmd], shell=True)
             if ret != 0:
                 sys.stderr.write("met error when remove old exp dir for %s" % self)
                 return
@@ -143,6 +143,7 @@ def parse_requirement_from_module_doc(mod_doc):
     MISUSE IT
     requirements_end
     """
+    print "mod doc is: ", mod_doc
     res = []
     doc_lines = mod_doc.split("\n")
     for i, l in enumerate(doc_lines):
@@ -156,7 +157,7 @@ def parse_requirement_from_module_doc(mod_doc):
         if cur:
             l = cur + l
         if l and l[-1] == "\\":
-            cur = l
+            cur = l[:-1]
             continue
         cur = ""
         if l == requirements_end:
