@@ -5,6 +5,7 @@ import os
 import tempfile
 import subprocess
 import sys
+import itertools
 
 __author__ = 'yonka'
 
@@ -30,7 +31,7 @@ class GitRequirement(Requirement):
 
     @classmethod
     def parse(cls, s):
-        items = {k: v for k, v in (item.strip().split("=", 1) for item in s.split(";"))}
+        items = {i[0]: i[1] for i in itertools.ifilter(lambda v: v and len(v) == 2, (item.strip().split("=", 1) for item in s.split(";")))}
         name = items.pop("name", None)
         url = items.pop("url", None)
         return cls(name, url, **items)
@@ -56,33 +57,49 @@ class GitRequirement(Requirement):
         if not name or not url:
             raise ValueError("url (%s) or name (%s) is invalid" % (url, name))
 
+    def __str__(self):
+        return "GitRequirement: {name: %s, url: %s, branch: %s, commit: %s, tag: %s, path: %s, dir_name: %s}" % (
+            self.name, self.url, self.branch, self.commit, self.tag, self.path, self.dir_name)
+
     def do_collect(self, exp_dir, temp_dir=None):
         if temp_dir is None:
             temp_dir = tempfile.mkdtemp()
 
+
+        repo_path = os.path.join(temp_dir, self.name)
+        if os.path.exists(repo_path):
+            cmd = "rm -rf %s" % repo_path
+            print "exec cmd:", cmd
+            ret = subprocess.call([cmd], shell=True)
+            if ret != 0:
+                sys.stderr.write("met error when remove old dir for %s" % self)
+                return
         cmd = "cd %s && git clone %s %s" % (temp_dir, self.url, self.name)
-        ret = subprocess.call([cmd])
+        print "exec cmd:", cmd
+        ret = subprocess.call([cmd], shell=True)
         if ret != 0:
             sys.stderr.write("met error when do clone for %s" % self)
             return
-        repo_path = os.path.join(temp_dir, self.name)
 
         if self.branch is not None:
             cmd = "cd %s && git checkout %s" % (repo_path, self.branch)
-            ret = subprocess.call([cmd])
+            print "exec cmd:", cmd
+            ret = subprocess.call([cmd], shell=True)
             if ret != 0:
                 sys.stderr.write("met error when do change branch for %s" % self)
                 return
 
         if self.commit is not None:
             cmd = "cd %s && git checkout %s" % (repo_path, self.commit)
-            ret = subprocess.call([cmd])
+            print "exec cmd:", cmd
+            ret = subprocess.call([cmd], shell=True)
             if ret != 0:
                 sys.stderr.write("met error when do change commit for %s" % self)
                 return
         elif self.tag is not None:
-            cmd = "cd %s && git fetch --tags && checkout %s" % (repo_path, self.tag)
-            ret = subprocess.call([cmd])
+            cmd = "cd %s && git fetch --tags && git checkout %s" % (repo_path, self.tag)
+            print "exec cmd:", cmd
+            ret = subprocess.call([cmd], shell=True)
             if ret != 0:
                 sys.stderr.write("met error when do change tag for %s" % self)
                 return
@@ -96,7 +113,8 @@ class GitRequirement(Requirement):
             cmd = "cp -r %s %s" % (
                 os.path.join(repo_path, self.path),
                 dst_path)
-        ret = subprocess.call([cmd])
+        print "exec cmd:", cmd
+        ret = subprocess.call([cmd], shell=True)
         if ret != 0:
             sys.stderr.write("met error when do cp cmd (%s) for %s" % (cmd, self))
             return
@@ -122,9 +140,12 @@ def parse_requirement_from_module_doc(mod_doc):
         return res
     for l in doc_lines[1+1:]:
         l = l.strip()
+        if l == "requirements_end":
+            break
         lis = l.split(None, 1)
         if len(lis) != 2:
-            sys.stderr.write("requirement line is invalid: %s" % l)
+            sys.stderr.write("requirement line is invalid: %s\n" % l)
+            continue
         res.append(Requirement.parse(*lis))
     return res
 
@@ -136,6 +157,9 @@ def main():
         d = os.path.dirname(d)
     if d:
         os.chdir(d)
+    abs_cwd = os.path.abspath("./")
+    if abs_cwd not in sys.path:
+        sys.path.append(abs_cwd)
     mod = importlib.import_module(m)
     mod_doc = mod.__doc__
     mod_requirements = parse_requirement_from_module_doc(mod_doc)
@@ -146,11 +170,11 @@ def main():
     exp_dir = e
     if not exp_dir:
         exp_dir = "./"
-    exp_dir = os.path.join(exp_dir, "_%s_requirements" % m)
+    exp_dir = os.path.abspath(os.path.join(exp_dir, "_%s_requirements" % m))
     if not os.path.exists(exp_dir):
         print "export dir %s not exist, try to create it" % exp_dir
         os.makedirs(exp_dir)
-        
+
     temp_dir = tempfile.mkdtemp()
     for mod_requirement in mod_requirements:
         mod_requirement.do_collect(exp_dir, temp_dir)
