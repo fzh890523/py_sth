@@ -109,7 +109,7 @@ class GitRequirement(Requirement):
 
         if self.path is None:
             dst_path = os.path.join(exp_dir, self.dir_name or self.name)
-            cmd = "cd %s && rm -rf .git* && cd .. && cp -r %s %s" % (
+            cmd = "cd %s && rm -rf .git* && cdgit  .. && cp -r %s %s" % (
                 repo_path, repo_path, dst_path)
         else:
             dst_path = os.path.join(exp_dir, self.dir_name or os.path.basename(self.path))
@@ -138,7 +138,8 @@ def parse_requirement_from_module_doc(mod_doc):
     :return: list of requirement class instance
     mod_doc example:
     requirements_start
-    type type_require_content
+    type type_require_content  # if last char is "\", it means next line will also be part of this claim, so AVOID
+    MISUSE IT
     requirements_end
     """
     res = []
@@ -148,8 +149,15 @@ def parse_requirement_from_module_doc(mod_doc):
             break
     else:
         return res
+    cur = ""
     for l in doc_lines[1+1:]:
         l = l.strip()
+        if cur:
+            l = cur + l
+        if l and l[-1] == "\\":
+            cur = l
+            continue
+        cur = ""
         if l == requirements_end:
             break
         lis = l.split(None, 1)
