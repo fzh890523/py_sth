@@ -79,6 +79,7 @@ class GitRequirement(Requirement):
                 sys.stderr.write("met error when remove old dir for %s" % self)
                 return
         cmd = "cd %s && git clone %s %s" % (temp_dir, self.url, self.name)
+
         print "exec cmd:", cmd
         ret = subprocess.call([cmd], shell=True)
         if ret != 0:

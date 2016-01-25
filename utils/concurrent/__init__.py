@@ -3,6 +3,10 @@
 import threading
 from multiprocessing import Process
 import traceback
+import Queue
+from multiprocessing import queues as mp_queues
+import datetime as dt
+import sys
 
 __author__ = 'yonka'
 
@@ -49,6 +53,8 @@ def consume_queue(f, item_p=q_item_as_args, task_name="consume", profile_interva
 
     def consume(q):
         consume_count = 0
+        st = None
+        item = None
         if profile_interval > 0:
             st = dt.datetime.now()
         while True:
