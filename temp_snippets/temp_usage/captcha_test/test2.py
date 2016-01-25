@@ -1,6 +1,12 @@
 # encoding: utf-8
-from io import BytesIO
-from captcha.image import ImageCaptcha, WheezyCaptcha
+"""
+requirements_start
+git url=https://bitbucket.org/fzh890523/bb_captcha;name=captcha;commit=1e5e0a5385c8b8109da4a6df0cbac96b0ac4f5c3;\
+branch=master
+requirements_end
+"""
+
+from captcha.image import ImageCaptcha  # notice: use bb_captcha rather ...
 from threading import Thread
 import os
 import itertools
@@ -10,14 +16,6 @@ import sys
 __author__ = 'yonka'
 
 must_text = "12ab"
-
-
-def do_audio():
-    audio = AudioCaptcha(voicedir='./')
-
-    data = audio.generate('1234')
-    assert isinstance(data, bytearray)
-    audio.write('1234', 'out.wav')
 
 
 def do_image():
@@ -33,7 +31,10 @@ def do_image():
 def do_stress_image():
     ts = []
     ss = []
-    for i in itertools.chain(xrange(ord("a"), ord("z") + 1), xrange(ord("A"), ord("Z") + 1), xrange(ord("0"), ord("9") + 1)):
+    for i in itertools.chain(
+            xrange(ord("a"), ord("z") + 1),
+            xrange(ord("A"), ord("Z") + 1),
+            xrange(ord("0"), ord("9") + 1)):
         ss.append(chr(i))
     texts = set()
     f = sys.argv[1]

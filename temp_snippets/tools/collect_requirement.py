@@ -191,6 +191,9 @@ def main():
         d = os.path.dirname(d)
     if d:
         os.chdir(d)
+    m_ext = os.path.splitext(m)
+    if len(m_ext) == 2:
+        m = m_ext[0]
     abs_cwd = os.path.abspath("./")
     if abs_cwd not in sys.path:
         sys.path.append(abs_cwd)
@@ -217,9 +220,11 @@ def main():
 if __name__ == "__main__":
     help_info = """
     usage:
-    python refresh_captcha.py --bid ${bid: int, default 0} --size ${size: string, default 100x50} \
-    --groupid ${groupid: int, mandatory or string all} --routine ${routine: int, should be larger than 0} \
-    --sleepms ${sleepms: int,default 100} --conf ${conf, string, default ./}
+    python collect_requirement.py -d .a/b -m c
+    or
+    python collect_requirement.py -d .a/b.c[.py]
+    or
+    cd ./a/b && python collect_requirement.py -m c
     \n
     """
     parser = OptionParser(help_info)
