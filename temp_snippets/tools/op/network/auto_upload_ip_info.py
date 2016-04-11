@@ -75,7 +75,8 @@ def may_online(ip_info) -> bool:
         for addr in ifaddr:
             if not addr:
                 continue
-            if not ipaddress.ip_address(addr).is_private:
+            # if not ipaddress.ip_address(addr).is_private:
+            if not addr.startswith("127"):
                 return True
     return False
 
