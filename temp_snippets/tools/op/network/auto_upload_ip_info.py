@@ -1,4 +1,9 @@
 # encoding: utf-8
+"""
+usage: add following line to /etc/rc.local before line "exit 0"
+(cd /data/daemons/auto_upload_ip_info && sudo -u yonka nohup python3 auto_upload_ip_info.py --action=monitor >/data/logs/upload_ip_info.log 2>&1 &)
+should ensure that script file path and log file path are corrent and have right permission
+"""
 import datetime
 import json
 import os
@@ -6,10 +11,11 @@ import sys
 import optparse
 from os.path import expanduser
 import time
-import ipaddress
+import logging
 
 if os.name == "nt":
     import crypto
+
     sys.modules["Crypto"] = crypto
 import paramiko
 import netifaces
@@ -24,6 +30,7 @@ def get_home_dir_path() -> str:
     """
     ~形式的不能在代码里cd，要展开
     """
+
     def _win_home() -> str:
         home_drive = os.environ.get("HOMEDRIVE")
         home_path = os.environ.get("HOMEPATH")
@@ -143,6 +150,7 @@ def monitor(intervals=5):
         time.sleep(intervals)
         ip_info = get_ip_info()
         if ip_info is not None and not cmp_ip_info(g_last_ip_info, ip_info) and may_online(ip_info):
+            logging.info("last_info is %s, new_info is %s, do upload", g_last_ip_info, ip_info)
             upload(ip_info)
             g_last_ip_info = ip_info
 
@@ -152,6 +160,8 @@ def main(a):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p', level=logging.INFO)
     g_help_info = """
     usage:
     python auto_upload_ip_info.py --action=upload
