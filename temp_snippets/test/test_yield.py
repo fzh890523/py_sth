@@ -1,4 +1,5 @@
 # encoding: utf-8
+import unittest
 
 __author__ = 'yonka'
 
@@ -28,7 +29,8 @@ def h():
         cnt -= 1
 
 
-"""
+def do_t_test():
+    """
     enter iterate of t1
     start
     yield  0
@@ -61,15 +63,15 @@ def h():
     yield  9
     in iterate of t1, get a of value 9
     now a is  10
-"""
-def do_t_test():
+    """
     t1 = t()
     print "enter iterate of t1"
     for a in t1:
         print "in iterate of t1, get a of value", str(a)
 
 
-"""
+def do_h_test():
+    """
     start
     yield
     after yield, get a n of value: 2
@@ -78,8 +80,7 @@ def do_t_test():
     yield
     receive None n, return
      error
-"""
-def do_h_test():
+    """
     h1 = h()
     h1.next()  # 或者 send(None)，否则报错： TypeError: can't send non-None value to a just-started generator
     try:
@@ -90,7 +91,8 @@ def do_h_test():
         print e, "error"
 
 
-"""
+def do_h_test1():
+    """
     start
     yield
     after yield, get a n of value: 2
@@ -99,8 +101,7 @@ def do_h_test():
     yield
     receive None n, return
      error
-"""
-def do_h_test1():
+    """
     h1 = h()
     h1.send(None)  # 或者 send(None)，否则报错： TypeError: can't send non-None value to a just-started generator
     try:
@@ -109,6 +110,43 @@ def do_h_test1():
         h1.send(None)
     except StopIteration as e:
         print e, "error"
+
+
+class TestYield(unittest.TestCase):
+
+    def test_yield_once(self):
+        """
+        before get g
+        after get g, before first next
+        before yield
+        after first next, before second next
+        after yield
+
+        Process finished with exit code 0
+
+        Error
+        Traceback (most recent call last):
+          File "E:\yonka\git\python\yonka\py_sth\temp_snippets\test\test_yield.py", line 128, in test_yield_once
+            g.next()
+        StopIteration
+        """
+        def yield_once():
+            print "before yield"
+            yield 1
+            print "after yield"
+
+        print "before get g"
+        g = yield_once()
+        print "after get g, before first next"
+        g.next()
+        print "after first next, before second next"
+        try:
+            g.next()
+            print "after second next"
+        except StopIteration:
+            pass
+        else:
+            raise AssertionError("failed as no StopIteration is met")
 
 
 if __name__ == "__main__":

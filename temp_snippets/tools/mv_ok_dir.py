@@ -79,7 +79,7 @@ def mv_dir(src, dst_base):
 
 if __name__ == "__main__":
     """
-    example: C:\Users\bili\PycharmProjects\yonka_test>python ipy\mv_ok_dir.py --src=H:\BaiduYunDownload\古典SACD  --dst=K:\media\古典SACD
+    example: python C:\Users\bili\PycharmProjects\yonka_test\python ipy\mv_ok_dir.py --src=H:\BaiduYunDownload\古典SACD  --dst=K:\media\古典SACD
     """
     parser = OptionParser("python %s --src=${src_path} --dst=${dst_path}" % (
         os.path.basename(__file__),))
