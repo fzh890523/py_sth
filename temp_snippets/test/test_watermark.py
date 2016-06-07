@@ -85,7 +85,7 @@ def do_watermark(args):
 
             # blend the two images together using transparent overlays
             output = image.copy()
-            cv2.addWeighted(overlay, args["alpha"], output, 1.0, 0, output)
+            cv2.addWeighted(overlay, args["alpha"], output, args["beta"], 0, output)
 
         # write the output image to disk
         filename = imagePath[imagePath.rfind(os.path.sep) + 1:]
@@ -103,14 +103,28 @@ if __name__ == "__main__":
                       help="path to the input directory of images")
     g_ap.add_argument("-o", "--output", required=True,
                       help="path to the output directory")
+    """
+    dst[I] = saturate(src1[I] * alpha + src2[I] * beta + gramma)，这里gramma为0然后src1为watermark，src2为原图，beta为1。
+    alpha=1, beta=1表示完全原色叠加；alpha=1, beta=0表示完全水印（其他为黑）。
+    """
     g_ap.add_argument("-a", "--alpha", type=float, default=0.25,
+                      help="alpha transparency of the overlay (smaller is more transparent)")
+    g_ap.add_argument("-b", "--beta", type=float, default=1.0,
                       help="alpha transparency of the overlay (smaller is more transparent)")
     g_ap.add_argument("-c", "--correct", type=int, default=1,
                       help="flag used to handle if bug is displayed or not")
+    """
+    以左上角为基准，正x表示离左边的距离为abs(x)，负x表示离右边的距离为abs(x)；y同理
+    默认为 0,0也即为左上角
+    """
     g_ap.add_argument(
         "-p", "--pos", default=None,
         help="the pos of left-up-corner or right-down-corner according to dir arg, default None means 0_0. "
              "If contains negative value only -p=-1_-1 or --pos=-1_-1 format is supported")
+    """
+    默认值0表示：pos为水印右下角（同时尽量保全水印右下角部分，一般是可以的），一般对应负数pos，如 -10_-10
+    1表示： pos为水印左上角位置（同时也尽量保全水印左上角部分）；一般对应正数pos，如10_10
+    """
     g_ap.add_argument(
         "-d", "--dir", type=int, default=0, help="1 means left-up-corner; (default)0 means right-down-corner")
     g_args = vars(g_ap.parse_args())
