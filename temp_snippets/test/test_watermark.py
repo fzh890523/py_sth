@@ -14,12 +14,35 @@ g_args = None
 g_ap = None
 
 
+def get_n_channel_pic(pics, n):
+    res = None
+    if n == 1:
+        res = pics[1] if 1 in pics else cv2.cvtColor(
+            pics.get(3) if 3 in pics else pics[4], cv2.COLOR_RGB2GRAY)  # 都没有就gg
+    elif n == 3:
+        res = pics[3] if 3 in pics is not None else (
+            cv2.cvtColor(pics[4], cv2.COLOR_RGBA2RGB) if 4 in pics else cv2.cvtColor(pics[2], cv2.COLOR_GRAY2RGB))
+    elif n == 4:
+        pics[3] = pics[4] if 4 in pics else (
+            cv2.cvtColor(pics[3], cv2.COLOR_RGB2RGBA) if 3 in pics else cv2.cvtColor(pics[2], cv2.COLOR_GRAY2RGBA))
+    else:
+        raise ValueError("n %s is not valid channel number", n)
+    if res is not None:
+        pics[n] = res
+    return res
+
+
+def image_channel_num(img):
+    return 1 if len(img.shape) == 2 else img.shape[2]  # grey pic(h, w) or rgb pic(h, w, channels)
+
+
 def do_watermark(args):
     # load the watermark image, making sure we retain the 4th channel
     # which contains the alpha transparency
     # watermark = cv2.imread(args["watermark"], cv2.IMREAD_UNCHANGED)
     watermark = cv2.imread(args["watermark"], -1)
     (w_h, w_w) = watermark.shape[:2]
+    wm_channel_num = image_channel_num(watermark)
 
     pos_x, pos_y = 0, 0
     dir_v = args["dir"]
@@ -34,46 +57,54 @@ def do_watermark(args):
     # and the Alpha channels to construct the actaul watermark
     # NOTE: I'm not sure why we have to do this, but if we don't,
     # pixels are marked as opaque when they shouldn't be
-    if args["correct"] > 0:
-        (B, G, R, A) = cv2.split(watermark)
-        B = cv2.bitwise_and(B, B, mask=A)
-        G = cv2.bitwise_and(G, G, mask=A)
-        R = cv2.bitwise_and(R, R, mask=A)
-        watermark = cv2.merge([B, G, R, A])
+    if args["correct"] > 0 and wm_channel_num == 4:  # only for A channel(transparent) exist case
+        wm_channels = cv2.split(watermark)
+        for i in range(wm_channel_num - 1):
+            wm_channels[i] = cv2.bitwise_and(wm_channels[i], wm_channels[i], mask=wm_channels[wm_channel_num - 1])
+        watermark = cv2.merge(wm_channels)
+
+    watermark_pics = {wm_channel_num: watermark}
 
     # loop over the input images
-    for imagePath in paths.list_images(args["input"]):
+    if os.path.isfile(args["input"]):
+        imgs = [args["input"]]
+    else:
+        imgs = paths.list_images(args["input"])
+    for imagePath in imgs:
         # load the input image, then add an extra dimension to the
         # image (i.e., the alpha transparency)
-        image = cv2.imread(imagePath)
-        (img_h, img_w) = image.shape[:2]
+        cur_img = cv2.imread(imagePath)
+        (img_h, img_w) = cur_img.shape[:2]
+        cur_img_channel_num = image_channel_num(cur_img)
 
         if abs_pos_x >= img_w or abs_pos_y >= img_h:
             logging.warn(
                 "watermark is out of img, use original img. pos_x is %d, pos_y is %d while img_w is %d and img_h is %d",
                 pos_x, pos_y, img_w, img_h)
-            output = image
+            output = cur_img
         else:
-            image = np.dstack([image, np.ones((img_h, img_w), dtype="uint8") * 255])
+            print "image is %s" % cur_img
+            # cur_img = np.dstack([cur_img, np.ones((img_h, img_w), dtype="uint8") * 255])
+            # TODO 比较一下对无alpha通道的pic直接这样addweight效果如何
             cur_pos_x = pos_x if pos_x >= 0 else img_w + pos_x
             cur_pos_y = pos_y if pos_y >= 0 else img_h + pos_y
-            cur_watermark = watermark
+            cur_watermark = get_n_channel_pic(watermark_pics, cur_img_channel_num)
             if dir_v:
                 cur_watermark_w = img_w - cur_pos_x if w_w + cur_pos_x > img_w else w_w
                 cur_watermark_h = img_h - cur_pos_y if w_h + cur_pos_y > img_h else w_h
                 if cur_watermark_w != w_w or cur_watermark_h != w_h:
-                    cur_watermark = watermark[0:cur_watermark_h, 0:cur_watermark_w]
+                    cur_watermark = cur_watermark[0:cur_watermark_h, 0:cur_watermark_w]
             else:
                 cur_watermark_w = w_w - cur_pos_x if cur_pos_x - w_w < 0 else w_w
                 cur_watermark_h = w_h - cur_pos_y if cur_pos_y - w_h < 0 else w_h
                 if cur_watermark_w != w_w or cur_watermark_h != w_h:
-                    cur_watermark = watermark[w_h - cur_watermark_h:w_h, w_w - cur_watermark_w:w_w]
+                    cur_watermark = cur_watermark[w_h - cur_watermark_h:w_h, w_w - cur_watermark_w:w_w]
 
             # construct an overlay that is the same size as the input
             # image, (using an extra dimension for the alpha transparency),
             # then add the watermark to the overlay in the bottom-right
             # corner
-            overlay = np.zeros((img_h, img_w, 4), dtype="uint8")
+            overlay = np.zeros((img_h, img_w, wm_channel_num), dtype="uint8")
             # overlay[img_h - w_h - 10:img_h - 10, img_w - w_w - 10:img_w - 10] = watermark
             print "cur_pos_x %d, cur_pos_y %d\ncur_watermark_w %d, cur_watermark_h %d, cur_watermark is %s" % (
                 cur_pos_x, cur_pos_y, cur_watermark_w, cur_watermark_h, cur_watermark
@@ -84,7 +115,11 @@ def do_watermark(args):
                 overlay[cur_pos_y - cur_watermark_h:cur_pos_y, cur_pos_x - cur_watermark_w:cur_pos_x] = cur_watermark
 
             # blend the two images together using transparent overlays
-            output = image.copy()
+            output = cur_img.copy()
+            print "start!!!"
+            print overlay
+            print output
+            print wm_channel_num
             cv2.addWeighted(overlay, args["alpha"], output, args["beta"], 0, output)
 
         # write the output image to disk
