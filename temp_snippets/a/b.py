@@ -62,14 +62,14 @@ def add_path(trees: List[Tree], paths: List):
         root = tree.root
         if root is not None and root.v == paths[0]:
             match_tree = tree
-            root.count += 1
+            root.merge(PathCountNode(paths[0]))
     if match_tree is None:
         root = PathCountNode(paths[0])
         match_tree = Tree(root)
         trees.append(match_tree)
     cur_node = root
     for path in paths[1:]:
-        cur_node = cur_node.add_son(PathCountNode(path, None, 1))
+        cur_node = cur_node.add_son(PathCountNode(path))
 
 
 class Event(object):
@@ -111,6 +111,8 @@ class UserEvents(object):
                 yield cur_user_event
                 cur_user_event = UserEvents(event.user)
             cur_user_event.add_pages(event.page)
+        if cur_user_event is not None:
+            yield cur_user_event
 
 
 def list_picker(l, *fields):
