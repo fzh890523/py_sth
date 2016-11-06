@@ -4,7 +4,11 @@ from typing import List
 
 # import pygraphviz as pgv
 import xlrd
+import pydot
+import networkx as nx
 from queue import Queue
+
+from networkx.drawing.nx_pydot import graphviz_layout
 
 
 class Node(object):
@@ -129,24 +133,48 @@ def main(args, opts):
     wb = xlrd.open_workbook(opts.excel)
     sheet = wb.sheet_by_index(opts.sheet)
     trees = process((list_picker(sheet.row_values(row_num), 1, 2, 3) for row_num in range(sheet.nrows)))
-    g = graph(trees)
+    # g = graph(trees)
     g.draw("t.png")
 
 
-def graph(trees):
-    g = pgv.AGraph()
-    q = Queue()
-    for tree in trees:
-        q.put(tree.root)
-        g.add_node(tree.root.v, label=tree.root.count)
-        while not q.empty():
-            cur_node = q.get()
-            for node in cur_node.sons:
-                g.add_node(node.v, label=node.count)
-                g.add_edge(cur_node.v, node.v, label=node.count)  # may be head/tail label
-                q.put(node)
-        break  # for test
-    return g
+class TreesDrawer(object):
+    def graph(self, trees):
+        raise NotImplementedError()
+
+
+class PygraphvizTreesDrawer(TreesDrawer):
+    def graph(self, trees):
+        import pygraphviz as pgv
+        g = pgv.AGraph()
+        q = Queue()
+        for tree in trees:
+            q.put(tree.root)
+            g.add_node(tree.root.v, label=tree.root.count)
+            while not q.empty():
+                cur_node = q.get()
+                for node in cur_node.sons:
+                    g.add_node(node.v, label=node.count)
+                    g.add_edge(cur_node.v, node.v, label=node.count)  # may be head/tail label
+                    q.put(node)
+            break  # for test
+        return g
+
+
+class NetworksTreesDrawer(TreesDrawer):
+    def graph(self, trees):
+        g = nx.DiGraph()
+        q = Queue()
+        for tree in trees:
+            q.put(tree.root)
+            g.add_node(tree.root.v, label=tree.root.count)
+            while not q.empty():
+                cur_node = q.get()
+                for node in cur_node.sons:
+                    g.add_node(node.v, label=node.count)
+                    g.add_edge(cur_node.v, node.v, weight=node.count, label=node.count)  # may be head/tail label
+                    q.put(node)
+            break  # for test
+        return g
 
 
 def eh_enumerate(l, offset):
@@ -195,8 +223,12 @@ class TestB(unittest.TestCase):
         wb = xlrd.open_workbook("t.xlsx")
         sheet = wb.sheet_by_index(0)
         trees = process((list_picker(sheet.row_values(row_num), 0, 1, 2) for row_num in range(sheet.nrows)))  # XXX
-        g = graph(trees)
-        g.draw("t.png")
+        g = NetworksTreesDrawer().graph(trees)
+        nx.draw(g, pos=graphviz_layout(g))
+        import matplotlib.pyplot as plt
+        plt.savefig("t.png")
+
+        # g.draw("t.png")
 
     def test_read_excel(self):
         wb = xlrd.open_workbook("t.xlsx")
