@@ -67,6 +67,7 @@ def add_path(trees: List[Tree], paths: List):
         if root is not None and root.v == paths[0]:
             match_tree = tree
             root.merge(PathCountNode(paths[0]))
+            break
     if match_tree is None:
         root = PathCountNode(paths[0])
         match_tree = Tree(root)
@@ -160,6 +161,25 @@ class PygraphvizTreesDrawer(TreesDrawer):
         return g
 
 
+class GraphvizTreesDrawer(TreesDrawer):
+    def graph(self, trees):
+        from graphviz import Digraph
+        g = []
+        q = Queue()
+        for tree in trees:
+            cur_g = Digraph()
+            q.put(tree.root)
+            cur_g.node(tree.root.v, label=("%s: %d" % (tree.root.v, tree.root.count)))
+            while not q.empty():
+                cur_node = q.get()
+                for node in cur_node.sons:
+                    cur_g.node(node.v, label=("%s: %d" % (node.v, node.count)))
+                    cur_g.edge(cur_node.v, node.v, label=str(node.count))  # may be head/tail label
+                    q.put(node)
+            g.append(cur_g)
+        return g
+
+
 class NetworksTreesDrawer(TreesDrawer):
     def graph(self, trees):
         g = nx.DiGraph()
@@ -218,7 +238,7 @@ def process(values):
 
 
 class TestB(unittest.TestCase):
-    def test_main(self):
+    def test_main1(self):
         # open
         wb = xlrd.open_workbook("t.xlsx")
         sheet = wb.sheet_by_index(0)
@@ -227,8 +247,16 @@ class TestB(unittest.TestCase):
         nx.draw(g, pos=graphviz_layout(g))
         import matplotlib.pyplot as plt
         plt.savefig("t.png")
-
         # g.draw("t.png")
+
+    def test_main2(self):
+        # open
+        wb = xlrd.open_workbook("t.xlsx")
+        sheet = wb.sheet_by_index(0)
+        trees = process((list_picker(sheet.row_values(row_num), 0, 1, 2) for row_num in range(sheet.nrows)))  # XXX
+        gs = GraphvizTreesDrawer().graph(trees)
+        for i, g in enumerate(gs):
+            g.render("graph_%d.pdf" % i)
 
     def test_read_excel(self):
         wb = xlrd.open_workbook("t.xlsx")
