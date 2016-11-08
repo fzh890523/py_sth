@@ -1,6 +1,8 @@
+import datetime
 import functools
 import unittest
 from typing import List
+import logging
 
 # import pygraphviz as pgv
 import xlrd
@@ -16,6 +18,12 @@ class Node(object):
         self.v = v
         self.p = p_node
         self.sons = []
+
+    def to_json(self):
+        return {
+            "v": self.v,
+            "sons": [s.to_json() for s in self.sons]
+        }
 
     def set_parent(self, p_node):
         self.p = p_node
@@ -48,6 +56,11 @@ class PathCountNode(Node):
         self.count += node.count
         return self
 
+    def to_json(self):
+        j = super().to_json()
+        j["count"] = self.count
+        return j
+
 
 class Tree(object):
     def __init__(self, root_node: Node = None):
@@ -55,6 +68,11 @@ class Tree(object):
 
     def set_root(self, root_node: Node):
         self.root = root_node
+
+    def to_json(self):
+        return {
+            "root": self.root.to_json() if self.root else None
+        }
 
 
 def add_path(trees: List[Tree], paths: List):
@@ -102,13 +120,14 @@ class UserEvents(object):
         self.pages.extend(pages)
 
     @classmethod
-    def user_events_generater(cls, events):
+    def user_events_generator(cls, events):
         """
         :param events: iterable which return Event
         :return:
         """
         events = sorted(events, key=functools.cmp_to_key(mycmp=Event.cmp))
         cur_user_event = None
+        print("having finished events-sort")
         for event in events:
             if cur_user_event is None:
                 cur_user_event = UserEvents(event.user)
@@ -136,6 +155,50 @@ def main(args, opts):
     trees = process((list_picker(sheet.row_values(row_num), 1, 2, 3) for row_num in range(sheet.nrows)))
     # g = graph(trees)
     g.draw("t.png")
+
+
+def main1():
+    def page_converter(page: str):
+        terms = page.split("_")
+        for i, t in enumerate(reversed(terms)):
+            if not t.isalpha() and not t.isdigit():
+                return "_".join(terms[:len(terms) - i])
+        return page
+
+    # open
+    with open("C:/Users/vivian/Desktop/ccifs_672085_tahanghuankuan/hx.txt", encoding="utf-8") as f:
+        def data_extractor(f):
+            counter = 0
+            for l in f:
+                data = []
+                try:
+                    fields = l.split("|~|")
+                    data.append(fields[0])
+                    data.append(page_converter(fields[1]))
+                    data.append(int(datetime.datetime.strptime(fields[2], "%Y-%m-%d %H:%M:%S\n").timestamp()))
+                except Exception as e:
+                    print("extra data met error, e is %s, line is %s" % (e, l))
+                    continue
+                yield data
+                counter += 1
+                if counter > 0 and counter % 1000 == 0:
+                    print("having yield %d data", counter)
+
+        trees = process(data_extractor(f))
+        # g = graph(trees)
+        print("finished trees, len is %d", len(trees))
+        print("start to save trees to json")
+        import json
+        with open("C:/Users/vivian/Desktop/ccifs_672085_tahanghuankuan/trees.json", mode="w") as trees_json_f:
+            trees_json_f.write(json.dumps([tree.to_json() for tree in trees]))
+        print("start to graph trees")
+        gs = GraphvizTreesDrawer().graph(trees)
+        print("start to save graphs to dots")
+        for i, g in enumerate(gs):
+            g.save("C:/Users/vivian/Desktop/ccifs_672085_tahanghuankuan/dot_data_%d.dot" % i)
+        print("start to render graphs to pics")
+        for i, g in enumerate(gs):
+            g.render("C:/Users/vivian/Desktop/ccifs_672085_tahanghuankuan/graph_%d.pdf" % i)
 
 
 class TreesDrawer(object):
@@ -174,7 +237,7 @@ class GraphvizTreesDrawer(TreesDrawer):
                 cur_node = q.get()
                 for node in cur_node.sons:
                     cur_g.node(node.v, label=("%s: %d" % (node.v, node.count)))
-                    cur_g.edge(cur_node.v, node.v, label=str(node.count))  # may be head/tail label
+                    cur_g.edge(cur_node.v, node.v, weight=str(node.count), label=str(node.count))  # may be head/tail label
                     q.put(node)
             g.append(cur_g)
         return g
@@ -229,12 +292,16 @@ def truncate_path(pages: List):
 
 def process(values):
     trees = []
-    user_events_generator = UserEvents.user_events_generater((Event(*v) for v in values))
+    user_events_generator = UserEvents.user_events_generator((Event(*v) for v in values))
     for user_events in user_events_generator:
         paths = truncate_path(user_events.pages)
         for p in paths:
             add_path(trees, p)
     return trees
+
+
+if __name__ == "__main__":
+    main1()
 
 
 class TestB(unittest.TestCase):
