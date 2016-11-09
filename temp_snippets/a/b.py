@@ -148,59 +148,6 @@ def list_picker(l, *fields):
     return res
 
 
-def main(args, opts):
-    # open
-    wb = xlrd.open_workbook(opts.excel)
-    sheet = wb.sheet_by_index(opts.sheet)
-    trees = process((list_picker(sheet.row_values(row_num), 1, 2, 3) for row_num in range(sheet.nrows)))
-    # g = graph(trees)
-    g.draw("t.png")
-
-
-def main1():
-    def page_converter(page: str):
-        terms = page.split("_")
-        for i, t in enumerate(reversed(terms)):
-            if not t.isalpha() and not t.isdigit():
-                return "_".join(terms[:len(terms) - i])
-        return page
-
-    # open
-    with open("C:/Users/vivian/Desktop/ccifs_672085_tahanghuankuan/hx.txt", encoding="utf-8") as f:
-        def data_extractor(f):
-            counter = 0
-            for l in f:
-                data = []
-                try:
-                    fields = l.split("|~|")
-                    data.append(fields[0])
-                    data.append(page_converter(fields[1]))
-                    data.append(int(datetime.datetime.strptime(fields[2], "%Y-%m-%d %H:%M:%S\n").timestamp()))
-                except Exception as e:
-                    print("extra data met error, e is %s, line is %s" % (e, l))
-                    continue
-                yield data
-                counter += 1
-                if counter > 0 and counter % 1000 == 0:
-                    print("having yield %d data", counter)
-
-        trees = process(data_extractor(f))
-        # g = graph(trees)
-        print("finished trees, len is %d", len(trees))
-        print("start to save trees to json")
-        import json
-        with open("C:/Users/vivian/Desktop/ccifs_672085_tahanghuankuan/trees.json", mode="w") as trees_json_f:
-            trees_json_f.write(json.dumps([tree.to_json() for tree in trees]))
-        print("start to graph trees")
-        gs = GraphvizTreesDrawer().graph(trees)
-        print("start to save graphs to dots")
-        for i, g in enumerate(gs):
-            g.save("C:/Users/vivian/Desktop/ccifs_672085_tahanghuankuan/dot_data_%d.dot" % i)
-        print("start to render graphs to pics")
-        for i, g in enumerate(gs):
-            g.render("C:/Users/vivian/Desktop/ccifs_672085_tahanghuankuan/graph_%d.pdf" % i)
-
-
 class TreesDrawer(object):
     def graph(self, trees):
         raise NotImplementedError()
@@ -275,10 +222,11 @@ def truncate_path(pages: List):
 
         try:
             for i, p in enumerate(pages):
-                for j, pp in eh_enumerate(pages, i + 1):
+                for j in range(i-1, -1, -1):
+                    pp = pages[j]
                     if p == pp:
-                        res.append(pages[:i + j + 1])
-                        pages = pages[i + j + 1:]
+                        res.append(pages[:i])
+                        pages = pages[i:]
                         raise BreakoutException()
             else:
                 res.append(pages)
@@ -299,6 +247,96 @@ def process(values):
             add_path(trees, p)
     return trees
 
+
+def main(args, opts):
+    # open
+    wb = xlrd.open_workbook(opts.excel)
+    sheet = wb.sheet_by_index(opts.sheet)
+    trees = process((list_picker(sheet.row_values(row_num), 1, 2, 3) for row_num in range(sheet.nrows)))
+    # g = graph(trees)
+    g.draw("t.png")
+
+
+def isalnum(s: str):
+    try:
+        return s.encode('ascii').isalnum()
+    except:
+        return False
+
+
+def page_converter1(page: str):
+    terms = page.split("_")
+    res = page
+    for i, t in enumerate(reversed(terms)):
+        if not isalnum(t):
+            res = "_".join(terms[:len(terms) - i])
+            break
+    import hashlib
+    res = hashlib.md5(res.encode("utf-8")).hexdigest()
+    return res
+
+
+def page_converter(page: str):
+    terms = page.split("_")
+    res = terms[0]
+    import hashlib
+    res = hashlib.md5(res.encode("utf-8")).hexdigest()
+    return res
+
+
+def main1():
+    # open
+    with open("C:/Users/vivian/Desktop/ccifs_672085_tahanghuankuan/hx.txt", encoding="utf-8") as f:
+        def data_extractor(f):
+            counter = 0
+            for l in f:
+                data = []
+                try:
+                    fields = l.split("|~|")
+                    data.append(fields[0])
+                    data.append(page_converter(fields[1]))
+                    data.append(int(datetime.datetime.strptime(fields[2], "%Y-%m-%d %H:%M:%S\n").timestamp()))
+                except Exception as e:
+                    print("extra data met error, e is %s, line is %s" % (e, l))
+                    continue
+                yield data
+                counter += 1
+                if counter > 0 and counter % 1000 == 0:
+                    print("having yield %d data" % counter)
+
+        trees = process(data_extractor(f))
+        # g = graph(trees)
+        print("finished trees, len is %d" % len(trees))
+        try:
+            print("start to save trees to json")
+            import json
+            with open("C:/Users/vivian/Desktop/ccifs_672085_tahanghuankuan/trees.json", mode="w") as trees_json_f:
+                trees_json_f.write(json.dumps([tree.to_json() for tree in trees]))
+        except Exception as e:
+            print(e)
+        try:
+            import pickle
+            print("start to save trees to pickle")
+            with open("C:/Users/vivian/Desktop/ccifs_672085_tahanghuankuan/trees.pickle", mode="wb") as trees_pickle_f:
+                pickle.dump(trees, trees_pickle_f)
+        except Exception as e:
+            print(e)
+        #
+        # print("start to graph trees")
+        # gs = GraphvizTreesDrawer().graph(trees)
+        #
+        # try:
+        #     print("start to save graphs to dots")
+        #     for i, g in enumerate(gs):
+        #         g.save("C:/Users/vivian/Desktop/ccifs_672085_tahanghuankuan/dot_data_%d.dot" % i)
+        # except Exception as e:
+        #     print(e)
+        # try:
+        #     print("start to render graphs to pics")
+        #     for i, g in enumerate(gs):
+        #         g.render("C:/Users/vivian/Desktop/ccifs_672085_tahanghuankuan/graph_%d.pdf" % i)
+        # except Exception as e:
+        #     print(e)
 
 if __name__ == "__main__":
     main1()
@@ -352,3 +390,11 @@ class TestB(unittest.TestCase):
         l = [1, 2, 3, 1]
         l_res = truncate_path(l)
         assert l_res == [[1, 2, 3], [1]]
+
+        l = [1, 2, 2, 3, 1]
+        l_res = truncate_path(l)
+        assert l_res == [[1, 2], [2, 3, 1]]
+
+    def test_data_extractor(self):
+        s = "我们_a_1"
+        assert "我们" == page_converter(s)

@@ -2,6 +2,7 @@
 
 import os
 import sys
+import glob
 from optparse import OptionParser
 
 __author__ = 'yonka'
@@ -65,17 +66,22 @@ def mv_dir(src, dst_base):
     允许 /a/b/c ---> /a1/b1，此时会在b1下创建c；
     也允许 /a/b/c ---> /a1/b1/c，此时会...
     """
-    src = os.path.abspath(src)
-    dst_base = os.path.abspath(dst_base)
-    src_name = os.path.basename(src)
-    dst_base_name = os.path.basename(dst_base)
-    if dst_base_name == src_name:
-        dst = dst_base
+    src = [os.path.abspath(src_item) for src_item in glob.glob(src)]
+    if len(src) != 1:
+        for src_item in src:
+            mv_dir(src_item, dst_base)
     else:
-        dst = os.path.join(dst_base, src_name)
-    if not os.path.exists(dst):
-        os.makedirs(dst)
-    _begin_sync(src, dst)
+        src = src[0]
+        dst_base = os.path.abspath(dst_base)
+        src_name = os.path.basename(src)
+        dst_base_name = os.path.basename(dst_base)
+        if dst_base_name == src_name:
+            dst = dst_base
+        else:
+            dst = os.path.join(dst_base, src_name)
+        if not os.path.exists(dst):
+            os.makedirs(dst)
+        _begin_sync(src, dst)
 
 if __name__ == "__main__":
     """
